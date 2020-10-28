@@ -1,7 +1,7 @@
 /* 
  * tsh - A tiny shell program with job control
  * 
- * <Put your name and ID here>
+ * darrien gunn dgunn001 862030886
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -165,7 +165,52 @@ int main(int argc, char **argv)
 */
 void eval(char *cmdline) 
 {
-    return;
+    //argv container
+    char *argv[MAXARGS];
+    //back ground bool
+    int bg;
+    pid_t pid;
+
+    //sigset var
+    sigset_t signal;
+
+    bg = parseline(cmdline, argv);
+    
+    // no arguments
+    if(argv[0] == NULL){
+	return;
+    }
+
+    //built in command
+    if(builtin_cmd(argv)){
+	sigprocmask(SIG_BLOCK,&signal, 0);
+
+	pid = fork();
+	//child process runs not built in cmd
+	if(pid == 0){
+		sigprocmask(SIG_UNBLOCK, &signal,0);
+		//reset
+		setpgid(0,0);
+		if(execve(argv[0],argv,environ) < 0){
+			printf("%s: Command not found\n", argv[0]);
+			exit(0);
+		}
+	} 
+	//parent
+	else {
+		if(!bg){
+			addjob(jobs,pid,FG,cmdline);
+			sigprocmask(SIG_UNBLOCK,&signal, 0);
+			waitfg(pid);
+		} 
+		else {
+			addjob(jobs,pid,BG,cmdline);
+			sigprocmask(SIG_UNBLOCK,&signal,0);
+			printf("[%d] (%d) %s", pid2jid(pid), pid, cmdline);
+		}
+	}
+    }		
+	return;
 }
 
 /* 
@@ -231,6 +276,26 @@ int parseline(const char *cmdline, char **argv)
  */
 int builtin_cmd(char **argv) 
 {
+	//quit
+	if(!strcmp(argv[0], "quit")){
+		exit(0);
+	}
+	//job
+	if(strcmp(argv[0], "jobs")){
+		listjobs(jobs);
+		return 1;
+	} 
+	//fg
+	else if(!strcmp(argv[0], "fg")){
+		do_bgfg(argv);
+		return 1;
+	} 
+	//bg
+	else if(!strcmp(argv[0], "bg")){
+		do_bgfg(argv);
+		return 1;
+	}
+	
     return 0;     /* not a builtin command */
 }
 
