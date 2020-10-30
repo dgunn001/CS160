@@ -379,7 +379,28 @@ void waitfg(pid_t pid)
  */
 void sigchld_handler(int sig) 
 {
-    return;
+    	//pid and return status variables
+	int status;
+	pid_t pid;
+
+	//loop while a wait is detected
+	while((pid = waitpid(fgpid(jobs), &status, WNOHANG|WUNTRACED)) > 0){
+
+		if(WIFSIGNALED(status)){
+			sigint_handler(sig);
+			printf("Job [%d] (%d) terminated by signal %d\n",pid2jid(pid),pid,WTERMSIG(status));
+		}
+		else if(WIFSTOPPED(status)){
+			printf("Job [%d] (%d) stopped by signal %d\n",pid2jid(pid),pid,WSTOPSIG(status));
+			sigtstp_handler(sig);
+		}
+		else if(WIFEXITED(status)){
+			deletejob(jobs, pid);
+		}
+
+	}
+
+	return;
 }
 
 /* 
@@ -389,6 +410,8 @@ void sigchld_handler(int sig)
  */
 void sigint_handler(int sig) 
 {
+    int pid = fgpid(jobs);
+    if(pid!=0) kill(-pid,SIGINT);                  //send sigint to the process group
     return;
 }
 
@@ -399,6 +422,8 @@ void sigint_handler(int sig)
  */
 void sigtstp_handler(int sig) 
 {
+    int pid = fgpid(jobs);
+    if(pid!=0) kill(-pid,SIGTSTP);                  //send sigtstp to the process group
     return;
 }
 
