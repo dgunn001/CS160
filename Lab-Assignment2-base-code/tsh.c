@@ -164,39 +164,70 @@ int main(int argc, char **argv)
  * when we type ctrl-c (ctrl-z) at the keyboard.  
 */
 void eval(char *cmdline) {
-    char *argv[MAXARGS];
-	int bg,bin;             //to store the return values of parseline and builtin_cmd
-    pid_t pid;              //to store the pid of the newly created process
-	sigset_t mask;          //declaring a signal set for blocking signals
+ 
+	//argv container for execve() function call
+	char *argv[MAXARGS];
 
-    bg = parseline(cmdline, argv);
-    bin = builtin_cmd(argv);
+	int bg;
+	pid_t pid;
 
-	if(!bin){                       //this will execute only if builtin_cmd returns 0
-		sigemptyset(&mask);             //initializing the signal set, I have not done the error checking if any of the following three commands fail
-		sigaddset(&mask, SIGCHLD);
-		sigprocmask(SIG_BLOCK, &mask, NULL);
+	//sigset variable
+	sigset_t signal;
 
-		if((pid = fork()) < 0){                     //forking a child
-            fprintf(stderr,"Forking Error!\n");         //error if forking fails, writing error to stderr instead of stdout
-            return;
-		}else if(pid == 0){                             //instructions for the child
-			setpgid(0, 0);
-			sigprocmask(SIG_UNBLOCK, &mask, NULL);
+	/*returns x
+	 x=1 : BG job
+	 x=0: FG job
+	*/
+	bg = parseline(cmdline, argv);
 
-			if(execvp(argv[0], argv) < 0) {             //exec the child to given command and print error if it fails
-				fprintf(stderr,"%s: Command not found\n", argv[0]);
-				exit(1);
+	//empty case
+	if(argv[0] == NULL){
+		return;
+	}
+
+	//if not built in cmd
+	if(!builtin_cmd(argv)){
+
+		//blocking 
+		sigprocmask(SIG_BLOCK,&signal , 0);
+
+		pid = fork();
+		//child process runs user job
+		if(pid == 0){
+
+			//unblock
+			sigprocmask(SIG_UNBLOCK,&signal , 0);
+
+			//resetting group id=0
+			setpgid(0,0);
+
+			//execve function call, -1=error
+			if(execve(argv[0], argv, environ) < 0){
+				
+				//error message
+				printf("%s: Command not found\n", argv[0]);
+				exit(0);
 			}
-        }else{                                          //instructions for the parent
-			if(!bg) addjob(jobs, pid, FG, cmdline);     //adding the job to joblist before unblocking signals
-			else addjob(jobs, pid, BG, cmdline);
-
-			sigprocmask(SIG_UNBLOCK, &mask, NULL);
-
-			if (!bg) waitfg(pid);                                           //running the process in foreground if the process is a foreground process
-			else printf("[%d] (%d) %s", pid2jid(pid), pid, cmdline);
 		}
+		//parent
+		else{
+
+			//FG job
+			if(!bg){
+		
+				addjob(jobs,pid,FG,cmdline);
+				sigprocmask(SIG_UNBLOCK,&signal , 0);
+				waitfg(pid);
+			}
+			//BG job
+			else{
+
+				addjob(jobs,pid,BG,cmdline);
+				sigprocmask(SIG_UNBLOCK,&signal , 0);
+				printf("[%d] (%d) %s", pid2jid(pid), pid, cmdline);
+			}
+		}
+
 	}
 	return;
 }
