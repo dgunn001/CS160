@@ -183,7 +183,7 @@ void eval(char *cmdline) {
         //child
 	    if((pid=fork())==0){
             sigprocmask(SIG_UNBLOCK, &set, NULL);   //unblock signal SIGCHILD
-            setpgid();
+            setpgid(0,0);
 	    execvp(argv[0],argv);                       //executes user command if successful
             printf("%s: Command not found\n",argv[0]);  //Throw error if execution unsuccessful
             exit(1);
@@ -268,28 +268,21 @@ int parseline(const char *cmdline, char **argv)
  */
 int builtin_cmd(char **argv) 
 {
-    if(!strcmp(argv[0],"quit")){        //quit the job if there are no stopped jobs in job list
-        struct job_t *job=jobs;
-        int i=0;
+    if(strcmp(argv[0],"quit")==0){              //if the command is quit then wait for the background processes to finish and then quit, here I'm not printing a message if there are background jobs running
+        int i;
         for(i=0;i<MAXJOBS;i++){
             if(jobs[i].state == BG) {
                 waitfg(jobs[i].pid);
             }
         }
         exit(0);
-    }
-
-    else if(!strcmp(argv[0],"jobs")){
-	listjobs(jobs);                        //print job list
-	return 1;
-    }
-
-    else if((!strcmp(argv[0],"fg")) || (!strcmp(argv[0],"bg"))){
-	do_bgfg(argv);
-	return 1;
-    }
-
-    return 0;
+	}else if(strcmp(argv[0],"jobs")==0){        //call listjobs function if the command is jobs
+		listjobs(jobs);
+		return 1;
+    }else if(strcmp(argv[0],"bg")==0 || strcmp(argv[0],"fg")==0){   //call do_bgfg function if the command is bg or fg
+		do_bgfg(argv);
+		return 1;
+	}else return 0;    
 }
 
 /* 
