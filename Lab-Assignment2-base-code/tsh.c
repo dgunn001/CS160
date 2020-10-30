@@ -374,14 +374,12 @@ void sigchld_handler(int sig)
     int status;
 
     while (1) {
-    	pid = waitpid(fgpid(jobs), &status, WUNTRACED|WNOHANG);    //reap zombie children
+    	pid = waitpid(fgpid(jobs), &status, WUNTRACED|WNOHANG);//reap zombie children
     	if (pid <= 0)    //No more zombie children to reap
         	break;
-
         //check if exited normally
     	if(WIFEXITED(status))
             deletejob(jobs, pid);      //delete the child from the job list
-        
         //check if child process terminated because of a signal that was not caught
         //SIGINT signal
         else if(WIFSIGNALED(status)){
@@ -424,9 +422,9 @@ void sigtstp_handler(int sig)
     int pid=fgpid(jobs);
 
     if(pid>0){
-        struct job_t *temp;
-        temp=getjobpid(jobs, pid);
-        temp->state=ST;         //change job status to ST
+        struct job_t *j;
+        j=getjobpid(jobs, pid);
+        j->state=ST;         //change job status to ST
         kill(-pid,SIGTSTP);     //send SIGTSTP signal to the entire foreground process group
         printf("Job [%d] (%d) stopped by signal %d\n", pid2jid(pid), pid, sig);
     }
