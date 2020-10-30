@@ -304,39 +304,6 @@ int builtin_cmd(char **argv)
  */
 void do_bgfg(char **argv) 
 {
-	//quiting casei or killig case
-	if(!strcmp(argv[0],"quit")){
-		exit(0);
-	}
-
-	//other cases to handle: fg,bg,jobs
-	//jobs case
-	if(!strcmp(argv[0], "jobs")){
-
-		listjobs(jobs);
-		return 1;
-	}
-	//fg case
-	else if(!strcmp(argv[0], "fg")){
-
-		do_bgfg(argv);
-		return 1;
-	}
-	//bg case
-	else if(!strcmp(argv[0], "bg")){
-
-		do_bgfg(argv);
-		return 1;
-	}
-
-	return 0;     /* not a builtin command */
-}
-
-/* 
- * do_bgfg - Execute the builtin bg and fg commands
- */
-void do_bgfg(char **argv) 
-{
 
 	struct job_t *job;
 	int jid;
