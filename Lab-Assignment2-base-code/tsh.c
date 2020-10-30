@@ -272,9 +272,8 @@ int builtin_cmd(char **argv)
         struct job_t *job=jobs;
         int i=0;
         for(i=0;i<MAXJOBS;i++){
-            if(job[i].state==ST){
-                printf("You can't exit, there are still stopped jobs in job-table\n");
-                return 1;
+            if(jobs[i].state == BG) {
+                waitfg(jobs[i].pid);
             }
         }
         exit(0);
