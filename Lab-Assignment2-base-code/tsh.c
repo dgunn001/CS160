@@ -183,8 +183,8 @@ void eval(char *cmdline) {
         //child
 	    if((pid=fork())==0){
             sigprocmask(SIG_UNBLOCK, &set, NULL);   //unblock signal SIGCHILD
-            setpgrp();  //making the calling process as a process group leader i.e. making child a group leader
-            execvp(argv[0],argv);                       //executes user command if successful
+            setpgid();
+	    execvp(argv[0],argv);                       //executes user command if successful
             printf("%s: Command not found\n",argv[0]);  //Throw error if execution unsuccessful
             exit(1);
 	    }
