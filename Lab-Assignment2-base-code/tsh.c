@@ -268,27 +268,29 @@ int parseline(const char *cmdline, char **argv)
  */
 int builtin_cmd(char **argv) 
 {
-	//quit
-	if(!strcmp(argv[0], "quit")){
-		exit(0);
-	}
-	//job
-	if(strcmp(argv[0], "jobs")){
-		listjobs(jobs);
-		return 1;
-	} 
-	//fg
-	else if(!strcmp(argv[0], "fg")){
-		do_bgfg(argv);
-		return 1;
-	} 
-	//bg
-	else if(!strcmp(argv[0], "bg")){
-		do_bgfg(argv);
-		return 1;
-	}
-	
-    return 0;     /* not a builtin command */
+    if(!strcmp(argv[0],"quit")){        //quit the job if there are no stopped jobs in job list
+        struct job_t *job=jobs;
+        int i=0;
+        for(i=0;i<MAXJOBS;i++){
+            if(job[i].state==ST){
+                printf("You can't exit, there are still stopped jobs in job-table\n");
+                return 1;
+            }
+        }
+        exit(0);
+    }
+
+    else if(!strcmp(argv[0],"jobs")){
+	listjobs(jobs);                        //print job list
+	return 1;
+    }
+
+    else if((!strcmp(argv[0],"fg")) || (!strcmp(argv[0],"bg"))){
+	do_bgfg(argv);
+	return 1;
+    }
+
+    return 0;
 }
 
 /* 
