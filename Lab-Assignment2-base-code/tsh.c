@@ -165,71 +165,44 @@ int main(int argc, char **argv)
 */
 void eval(char *cmdline) {
  
-	//argv container for execve() function call
-	char *argv[MAXARGS];
+	    int retval,bg;                      //for storing return value for builtin_cmd and parseline
+    if(!strcmp(cmdline,"\n")) return;   //simply return if there is no cmd/argument
+    char* argv[MAXLINE];                //argument list
+    sigset_t set;                       //signal set
+    
+    bg=parseline(cmdline,argv);
+    retval=builtin_cmd(argv);
+    
+    if(retval==0){                      //if not builtin_cmd
+	    pid_t pid;
 
-	int bg;
-	pid_t pid;
+        sigemptyset(&set);                      //initialize signal set
+        sigaddset(&set, SIGCHLD);               //add SIGCHLD to the set
+        sigprocmask(SIG_BLOCK, &set, NULL);     //block the signal
 
-	//sigset variable
-	sigset_t signal;
+        //child
+	    if((pid=fork())==0){
+            sigprocmask(SIG_UNBLOCK, &set, NULL);   //unblock signal SIGCHILD
+            setpgrp();  //making the calling process as a process group leader i.e. making child a group leader
+            execvp(argv[0],argv);                       //executes user command if successful
+            printf("%s: Command not found\n",argv[0]);  //Throw error if execution unsuccessful
+            exit(1);
+	    }
+        //parent
+        else{
+            if(bg)  //Background
+                addjob(jobs,pid,BG,cmdline);        //add process to job list
+            else    //Foreground
+                addjob(jobs,pid,FG,cmdline);        //add process to job list
+            sigprocmask(SIG_UNBLOCK, &set, NULL);   //unblock signal SIGCHILD
+            if(bg)
+                printf("[%d] (%d) %s", pid2jid(pid), pid, cmdline);     //print background job info
+            else
+                waitfg(pid);        //parent waits for foreground job to terminate
+        }
+    }
 
-	/*returns x
-	 x=1 : BG job
-	 x=0: FG job
-	*/
-	bg = parseline(cmdline, argv);
-
-	//empty case
-	if(argv[0] == NULL){
-		return;
-	}
-
-	//if not built in cmd
-	if(!builtin_cmd(argv)){
-
-		//blocking 
-		sigprocmask(SIG_BLOCK,&signal , 0);
-
-		pid = fork();
-		//child process runs user job
-		if(pid == 0){
-
-			//unblock
-			sigprocmask(SIG_UNBLOCK,&signal , 0);
-
-			//resetting group id=0
-			setpgid(0,0);
-
-			//execve function call, -1=error
-			if(execve(argv[0], argv, environ) < 0){
-				
-				//error message
-				printf("%s: Command not found\n", argv[0]);
-				exit(0);
-			}
-		}
-		//parent
-		else{
-
-			//FG job
-			if(!bg){
-		
-				addjob(jobs,pid,FG,cmdline);
-				sigprocmask(SIG_UNBLOCK,&signal , 0);
-				waitfg(pid);
-			}
-			//BG job
-			else{
-
-				addjob(jobs,pid,BG,cmdline);
-				sigprocmask(SIG_UNBLOCK,&signal , 0);
-				printf("[%d] (%d) %s", pid2jid(pid), pid, cmdline);
-			}
-		}
-
-	}
-	return;
+    return;
 }
 
 /* 
