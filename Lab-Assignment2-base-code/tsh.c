@@ -304,7 +304,87 @@ int builtin_cmd(char **argv)
  */
 void do_bgfg(char **argv) 
 {
-    return;
+	//quiting casei or killig case
+	if(!strcmp(argv[0],"quit")){
+		exit(0);
+	}
+
+	//other cases to handle: fg,bg,jobs
+	//jobs case
+	if(!strcmp(argv[0], "jobs")){
+
+		listjobs(jobs);
+		return 1;
+	}
+	//fg case
+	else if(!strcmp(argv[0], "fg")){
+
+		do_bgfg(argv);
+		return 1;
+	}
+	//bg case
+	else if(!strcmp(argv[0], "bg")){
+
+		do_bgfg(argv);
+		return 1;
+	}
+
+	return 0;     /* not a builtin command */
+}
+
+/* 
+ * do_bgfg - Execute the builtin bg and fg commands
+ */
+void do_bgfg(char **argv) 
+{
+
+	struct job_t *job;
+	int jid;
+	pid_t pid;
+	//no PID or JID
+	if(argv[1] == NULL){
+		printf("%s command requires PID or %%jobid argument\n", argv[0]);
+		return;
+	}
+	//jid and pid branches
+	//PID
+	if(isdigit(argv[1][0])){
+		//convert job id string to int
+		pid = atoi(argv[1]);
+		//error process desont exist
+		if(!(job = getjobpid(jobs, pid))){
+			printf("(%d): No such process\n", pid);
+			return;
+		}
+
+	}
+	//jid is used
+	else if(argv[1][0] == '%'){
+		//convert job id string to int
+		jid = atoi(&argv[1][1]);
+		//error job desont exist
+		if(!(job = getjobjid(jobs, jid))){
+			printf("%d: No such job\n", jid);
+			return;
+		}
+	}
+	//error wrong cmd
+	else{
+		printf("%s: Argument must be a PID or %%jobid\n", argv[0]);
+		return;
+
+	}
+	//fg command
+	if(strcmp(argv[0], "fg") == 0){	
+		job->state = FG;
+		waitfg(job->pid);
+	}
+	//bg command
+	else{
+		job->state = BG;
+		printf("[%d] (%d) %s", job->jid, job->pid, job->cmdline); 
+	}
+	return;
 }
 
 /* 
@@ -312,6 +392,10 @@ void do_bgfg(char **argv)
  */
 void waitfg(pid_t pid)
 {
+    job_t* temp = getjobpid(jobs,pid);
+    while(temp->state == FG){
+        sleep(1);
+    }
     return;
 }
 
