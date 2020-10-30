@@ -327,17 +327,22 @@ void do_bgfg(char **argv)
 		return;
 
 	}
-	//fg command
-	if(strcmp(argv[0], "fg") == 0){	
-		job->state = FG;
-		waitfg(job->pid);
-	}
-	//bg command
-	else{
-		job->state = BG;
-		printf("[%d] (%d) %s", job->jid, job->pid, job->cmdline); 
-	}
-	return;
+    if(!strcmp(argv[0],"bg") && job->state==ST){
+        printf("[%d] (%d) %s", job->jid, job->pid, job->cmdline);
+        job->state = BG;            //change state FG-or-ST to BG
+        kill(-(job->pid), SIGCONT); //send signal SIGCONT to whole group of given job
+    }
+    else if(!strcmp(argv[0],"fg")){
+        if(job->state==ST){
+            job->state = FG;        //change state ST to FG
+            kill(-(job->pid), SIGCONT); //send signal SIGCONT to whole group of given job
+        }
+        else if(job->state==BG)     //change state BG to FG
+            job->state = FG;        
+        waitfg(job->pid);           //wait for fg to finish
+    }
+
+    return;
 }
 
 /* 
